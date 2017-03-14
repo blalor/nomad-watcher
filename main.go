@@ -66,9 +66,16 @@ func main() {
     
     eventChan := make(chan interface{})
     
+    allocEventChan, taskStateEventChan := watcher.WatchAllocations(nomadClient.Allocations())
     go func() {
-        for ae := range watcher.WatchAllocations(nomadClient.Allocations()) {
+        for ae := range allocEventChan {
             eventChan <- ae
+        }
+    }()
+    
+    go func() {
+        for tse := range taskStateEventChan {
+            eventChan <- tse
         }
     }()
     
