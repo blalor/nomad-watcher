@@ -79,3 +79,45 @@ prettified; the actual log file contains one event per line.
   }
 }
 ```
+
+### task event
+
+```json
+{
+  "@timestamp": "2017-03-13T23:02:28.859966757-04:00",
+  "wait_index": 401683,
+  "JobID": "some-job",
+  "AllocID": "16cc9300-2cf4-d539-d6e2-ef70662476e5",
+  "AllocName": "some-job.prod[0]",
+  "TaskGroup": "prod",
+  "EvalID": "a47889d1-4254-a819-eb09-6db6717e72f4",
+  "NodeID": "808fc706-79d7-7054-27fa-f405d85d179d",
+  "Task": "some-job",
+  "State": "pending",
+  "Failed": false,
+  "TaskEvent": {
+    "Type": "Restarting",
+    "Time": 1489460548859966700,
+    "FailsTask": false,
+    "RestartReason": "Restart within policy",
+    "SetupError": "",
+    "DriverError": "",
+    "DriverMessage": "",
+    "ExitCode": 0,
+    "Signal": 0,
+    "Message": "",
+    "KillReason": "",
+    "KillTimeout": 0,
+    "KillError": "",
+    "StartDelay": 16705495226,
+    "DownloadError": "",
+    "ValidationError": "",
+    "DiskLimit": 0,
+    "DiskSize": 0,
+    "FailedSibling": "",
+    "VaultError": "",
+    "TaskSignalReason": "",
+    "TaskSignal": ""
+  }
+}
+```
