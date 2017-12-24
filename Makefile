@@ -10,8 +10,10 @@ CURRENT_DIR := $(patsubst %/,%,$(dir $(MKFILE_PATH)))
 ## all non-test source files
 SOURCES := $(shell go list -f '{{range .GoFiles}}{{ $$.Dir }}/{{.}} {{end}}' ./... | sed -e 's@$(CURRENT_DIR)/@@g' )
 
+CMDS := stage/nomad-watcher stage/nomad-tail
+
 .PHONY: all
-all: default
+all: $(CMDS)
 
 .PHONY: clean
 clean:
@@ -44,12 +46,5 @@ test: $(GINKGO)
 watch-tests: $(GINKGO)
 	@$(GINKGO) watch -r
 
-stage/nomad-watcher-linux-amd64: test
-	GOOS=linux GOARCH=amd64 go build -o $@ -ldflags '-X main.version=$(VER)' .
-
-stage/nomad-watcher-darwin-amd64: test
-	GOOS=darwin GOARCH=amd64 go build -o $@ -ldflags '-X main.version=$(VER)' .
-
-.PHONY: default
-default: stage/nomad-watcher-darwin-amd64
-default: stage/nomad-watcher-linux-amd64
+$(CMDS): test
+	go build -o $@ -ldflags '-X main.version=$(VER)' ./cmd/$(notdir $@)
