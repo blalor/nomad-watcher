@@ -1,2 +1,4 @@
-.godeps/
 stage/
+
+## not checking in vendor
+/vendor/
