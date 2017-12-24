@@ -10,8 +10,8 @@ import (
     log "github.com/Sirupsen/logrus"
     
     nomad "github.com/hashicorp/nomad/api"
-    
-    "github.com/bsd/nomad-watcher/watcher"
+
+    "github.com/blalor/nomad-watcher/watcher"
 )
 
 var version string = "undef"
