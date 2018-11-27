@@ -1,6 +1,7 @@
 module github.com/blalor/nomad-watcher
 
 require (
+	cloud.google.com/go v0.33.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/DataDog/datadog-go v0.0.0-20180822151419-281ae9f2d895 // indirect
 	github.com/Jeffail/gabs v1.1.1 // indirect
@@ -25,7 +26,6 @@ require (
 	github.com/duosecurity/duo_api_golang v0.0.0-20181024123116-92fea9203dbc // indirect
 	github.com/elazarl/go-bindata-assetfs v1.0.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/fsnotify/fsnotify v1.4.7 // indirect
 	github.com/go-ldap/ldap v2.5.1+incompatible // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.1 // indirect
@@ -35,7 +35,7 @@ require (
 	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/gorhill/cronexpr v0.0.0-20140423231348-a557574d6c02 // indirect
+	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/consul v1.4.0 // indirect
 	github.com/hashicorp/go-hclog v0.0.0-20181001195459-61d530d6c27f // indirect
@@ -48,7 +48,7 @@ require (
 	github.com/hashicorp/go-rootcerts v0.0.0-20160503143440-6bb64b370b90 // indirect
 	github.com/hashicorp/go-sockaddr v0.0.0-20180320115054-6d291a969b86 // indirect
 	github.com/hashicorp/go-version v1.0.0 // indirect
-	github.com/hashicorp/hcl v0.0.0-20171017181929-23c074d0eceb // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/memberlist v0.1.0 // indirect
 	github.com/hashicorp/nomad v0.8.6
 	github.com/hashicorp/raft v1.0.0 // indirect
@@ -56,14 +56,13 @@ require (
 	github.com/hashicorp/vault v0.11.5 // indirect
 	github.com/hashicorp/vault-plugin-secrets-kv v0.0.0-20181106190520-2236f141171e // indirect
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
-	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/jefferai/jsonx v0.0.0-20160721235117-9cc31c3135ee // indirect
-	github.com/jessevdk/go-flags v1.3.0
+	github.com/jessevdk/go-flags v1.4.0
 	github.com/keybase/go-crypto v0.0.0-20181031135447-f919bfda4fc1 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lib/pq v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.0.9 // indirect
-	github.com/mattn/go-isatty v0.0.3 // indirect
+	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 	github.com/miekg/dns v1.0.15 // indirect
@@ -72,8 +71,8 @@ require (
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/mitchellh/hashstructure v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/onsi/ginkgo v1.6.0
-	github.com/onsi/gomega v1.4.1
+	github.com/onsi/ginkgo v1.7.0
+	github.com/onsi/gomega v1.4.3
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
@@ -91,17 +90,18 @@ require (
 	github.com/sirupsen/logrus v1.2.0
 	github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926 // indirect
 	github.com/ugorji/go v0.0.0-20170620104852-5efa3251c7f7 // indirect
+	golang.org/x/crypto v0.0.0-20181126163421-e657309f52e7 // indirect
 	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a // indirect
 	golang.org/x/oauth2 v0.0.0-20181120190819-8f65e3013eba // indirect
+	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
+	golang.org/x/sys v0.0.0-20181122145206-62eef0e2fa9b // indirect
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
-	google.golang.org/grpc v1.16.0 // indirect
+	google.golang.org/appengine v1.3.0 // indirect
+	google.golang.org/genproto v0.0.0-20181109154231-b5d43981345b // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/ldap.v2 v2.5.1 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.1 // indirect
-	gopkg.in/yaml.v2 v2.2.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
