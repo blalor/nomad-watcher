@@ -1,5 +1,5 @@
 ## version, taken from Git tag (like v1.0.0) or hash
-VER := $(shell (git describe --always --dirty 2>/dev/null || echo "¯\\\\\_\\(ツ\\)_/¯") | sed -e 's/^v//g' )
+VER := $(shell git describe --always --dirty 2>/dev/null | sed -e 's/^v//g' )
 
 ## fully-qualified path to this Makefile
 MKFILE_PATH := $(realpath $(lastword $(MAKEFILE_LIST)))
@@ -8,7 +8,7 @@ MKFILE_PATH := $(realpath $(lastword $(MAKEFILE_LIST)))
 CURRENT_DIR := $(patsubst %/,%,$(dir $(MKFILE_PATH)))
 
 ## all non-test source files
-SOURCES := $(shell go list -f '{{range .GoFiles}}{{ $$.Dir }}/{{.}} {{end}}' ./... | sed -e 's@$(CURRENT_DIR)/@@g' )
+SOURCES := go.mod go.sum $(shell go list -f '{{range .GoFiles}}{{ $$.Dir }}/{{.}} {{end}}' ./... | sed -e 's@$(CURRENT_DIR)/@@g' )
 
 CMDS := stage/nomad-watcher stage/nomad-tail
 
@@ -19,32 +19,24 @@ all: $(CMDS)
 clean:
 	git clean -f -Xd
 
-$(GOPATH)/bin:
-	mkdir -p $@
-
-DEP := $(GOPATH)/bin/dep
-$(DEP): | $(GOPATH)/bin
-	curl -sfSL -o $@ https://github.com/golang/dep/releases/download/v0.3.2/dep-$(shell go env GOOS)-$(shell go env GOARCH)
-	@chmod +x $@
-	@touch $@
-
-vendor: $(DEP) Gopkg.toml
-	$(DEP) ensure
-
-GINKGO := $(GOPATH)/bin/ginkgo
-$(GINKGO): | vendor
-	cd vendor/github.com/onsi/ginkgo/ginkgo && go install .
+## ensure we're using the version of ginkgo specified in go.mod
+GINKGO := $(shell awk '/github.com\/onsi\/ginkgo v/ {printf("stage/ginkgo@%s", $$2)}' go.mod)
+$(GINKGO):
+	go build -o $@ github.com/onsi/ginkgo/ginkgo
 
 .PHONY: tools
 tools: $(GINKGO)
 
-.PHONY: test
-test: $(GINKGO)
+stage/.tests-ran: $(SOURCES) $(GINKGO)
 	@$(GINKGO) -r
+	@touch $@
+
+.PHONY: test
+test: stage/.tests-ran
 
 .PHONY: watch-tests
 watch-tests: $(GINKGO)
 	@$(GINKGO) watch -r
 
-$(CMDS): test
+$(CMDS): $(SOURCES) | test
 	go build -o $@ -ldflags '-X main.version=$(VER)' ./cmd/$(notdir $@)
