@@ -7,7 +7,7 @@ import (
     "encoding/json"
     
     flags "github.com/jessevdk/go-flags"
-    log "github.com/Sirupsen/logrus"
+    log "github.com/sirupsen/logrus"
     
     nomad "github.com/hashicorp/nomad/api"
 
