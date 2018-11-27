@@ -23,14 +23,16 @@ type Options struct {
     NoWatchEvals      bool `long:"no-watch-evals"`
     NoWatchJobs       bool `long:"no-watch-jobs"`
     NoWatchNodes      bool `long:"no-watch-nodes"`
+    NoWatchDeploys    bool `long:"no-watch-deploys"`
 }
 
 var (
-    c_node  = ansi.ColorFunc("yellow")  // node: yellow
-    c_eval  = ansi.ColorFunc("cyan")    // eval: blue
-    c_task  = ansi.ColorFunc("red")     // task: red
-    c_alloc = ansi.ColorFunc("green")   // alloc: green
-    c_job   = ansi.ColorFunc("magenta") // job: magenta
+    c_node   = ansi.ColorFunc("yellow")  // node: yellow
+    c_eval   = ansi.ColorFunc("blue")    // eval: blue
+    c_task   = ansi.ColorFunc("red")     // task: red
+    c_alloc  = ansi.ColorFunc("green")   // alloc: green
+    c_job    = ansi.ColorFunc("magenta") // job: magenta
+    c_deploy = ansi.ColorFunc("cyan")    // deploy: cyan
 )
 
 func trimId(id string) string {
@@ -94,6 +96,14 @@ func main() {
         }()
     }
 
+    if ! opts.NoWatchDeploys {
+        go func() {
+            for de := range watcher.WatchDeployments(nomadClient.Deployments()) {
+                eventChan <- de
+            }
+        }()
+    }
+
     for e := range eventChan {
         switch typ := e.(type) {
             case watcher.AllocEvent:
@@ -103,7 +113,7 @@ func main() {
                 fmt.Printf(
                     "%s A[%s] E[%s] N[%s] %-20s %-12s '%s' %-12s '%s'\n",
 
-                    c_alloc("<alloc>"),
+                    c_alloc("<alloc >"),
                     c_alloc(trimId(a.ID)),
                     c_eval(trimId(a.EvalID)),
                     c_node(trimId(a.NodeID)),
@@ -143,7 +153,7 @@ func main() {
                 fmt.Printf(
                     "%s A[%s] %-20s %-12s failed? %s '%s' %s\n",
 
-                    c_task("<task >"),
+                    c_task("<task  >"),
                     c_alloc(trimId(t.AllocID)),
                     c_alloc(t.AllocName),
                     t.State,
@@ -159,7 +169,7 @@ func main() {
                 fmt.Printf(
                     "%s E[%s] %-14s %-20s N[%-8s] %-12s next: E[%-8s] prev: E[%-8s] block: E[%-8s]\n",
 
-                    c_eval("<eval >"),
+                    c_eval("<eval  >"),
                     c_eval(trimId(e.ID)),
                     e.TriggeredBy,
                     c_job(e.JobID),
@@ -178,7 +188,7 @@ func main() {
                 fmt.Printf(
                     "%s %s %03d %-20s %s\n",
 
-                    c_job("<job  >"),
+                    c_job("<job   >"),
                     j.Type,
                     j.Priority,
                     c_job(j.ID),
@@ -192,14 +202,30 @@ func main() {
                 fmt.Printf(
                     "%s N[%-8s] %s %-12s %-5t\n",
 
-                    c_node("<node >"),
+                    c_node("<node  >"),
                     c_node(trimId(n.ID)),
                     c_node(n.Name),
                     n.Status,
                     n.Drain,
                 )
+
+            case watcher.DeployEvent:
+                d := e.(watcher.DeployEvent).Deployment
+
+                // <deploy> D[b17cb6a9] example     v253 running Deployment is running
+                fmt.Printf(
+                    "%s D[%-8s] %-20s %-4s %-12s %s\n",
+
+                    c_deploy("<deploy>"),
+                    c_deploy(trimId(d.ID)),
+                    c_job(d.JobID),
+                    c_job(string(d.JobVersion)),
+                    d.Status,
+                    d.StatusDescription,
+                )
+
             default:
-                fmt.Printf("unexpected type %T\n", typ)
+                fmt.Printf("unexpected type %T: %#v\n", typ, e)
         }
     }
 }

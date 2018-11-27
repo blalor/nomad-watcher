@@ -7,19 +7,19 @@ import (
     "github.com/hashicorp/nomad/api"
 )
 
-type EvalEvent struct {
+type DeployEvent struct {
     Timestamp  time.Time       `json:"@timestamp"`
     WaitIndex  uint64          `json:"wait_index"`
-    Evaluation *api.Evaluation `json:"eval"`
+    Deployment *api.Deployment `json:"deployment"`
 }
 
-func WatchEvaluations(evalClient *api.Evaluations) <- chan EvalEvent {
+func WatchDeployments(deployClient *api.Deployments) <- chan DeployEvent {
     log := logrus.WithFields(logrus.Fields{
         "package": "watcher",
-        "fn": "WatchEvaluations",
+        "fn": "WatchDeployments",
     })
 
-    c := make(chan EvalEvent)
+    c := make(chan DeployEvent)
     keepWatching := true
 
     go func() {
@@ -29,10 +29,10 @@ func WatchEvaluations(evalClient *api.Evaluations) <- chan EvalEvent {
 
         for keepWatching {
             log.Debugf("retrieving from index %d", queryOpts.WaitIndex)
-            evals, queryMeta, err := evalClient.List(queryOpts)
+            deployments, queryMeta, err := deployClient.List(queryOpts)
 
             if err != nil {
-                log.Errorf("unable to list evaluations: %v", err)
+                log.Errorf("unable to list deployments: %v", err)
                 continue
             }
 
@@ -43,11 +43,11 @@ func WatchEvaluations(evalClient *api.Evaluations) <- chan EvalEvent {
                 // the time when the result was retrieved
                 now := time.Now()
 
-                // @todo track deleted evals
-                for _, eval := range evals {
-                    if (queryOpts.WaitIndex < eval.CreateIndex) || (queryOpts.WaitIndex < eval.ModifyIndex) {
-                        // evaluation was created or updated
-                        c <- EvalEvent{now, queryMeta.LastIndex, eval}
+                // @todo track deleted deployments
+                for _, deploy := range deployments {
+                    if (queryOpts.WaitIndex < deploy.CreateIndex) || (queryOpts.WaitIndex < deploy.ModifyIndex) {
+                        // deployment was created or updated
+                        c <- DeployEvent{now, queryMeta.LastIndex, deploy}
                     }
                 }
             }
