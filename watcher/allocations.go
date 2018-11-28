@@ -57,6 +57,7 @@ func WatchAllocations(allocClient *api.Allocations) (<- chan AllocEvent, <- chan
 
         queryOpts := &api.QueryOptions{
             WaitTime: 1 * time.Minute,
+            AllowStale: true,
         }
 
         for keepWatching {

@@ -25,6 +25,7 @@ func WatchDeployments(deployClient *api.Deployments) <- chan DeployEvent {
     go func() {
         queryOpts := &api.QueryOptions{
             WaitTime: 1 * time.Minute,
+            AllowStale: true,
         }
 
         for keepWatching {

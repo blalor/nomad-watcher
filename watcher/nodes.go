@@ -25,6 +25,7 @@ func WatchNodes(nodeClient *api.Nodes) <- chan NodeEvent {
     go func() {
         queryOpts := &api.QueryOptions{
             WaitTime: 1 * time.Minute,
+            AllowStale: true,
         }
         
         for keepWatching {

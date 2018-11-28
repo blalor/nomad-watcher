@@ -25,6 +25,7 @@ func WatchJobs(jobClient *api.Jobs) <- chan JobEvent {
     go func() {
         queryOpts := &api.QueryOptions{
             WaitTime: 1 * time.Minute,
+            AllowStale: true,
         }
         
         for keepWatching {

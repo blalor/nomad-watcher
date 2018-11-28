@@ -25,6 +25,7 @@ func WatchEvaluations(evalClient *api.Evaluations) <- chan EvalEvent {
     go func() {
         queryOpts := &api.QueryOptions{
             WaitTime: 1 * time.Minute,
+            AllowStale: true,
         }
 
         for keepWatching {
