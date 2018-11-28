@@ -144,7 +144,6 @@ func WatchAllocations(allocClient *api.Allocations) (<- chan AllocEvent, <- chan
                         delete(allocTaskEventTimes, allocId)
                     }
                 }
-
             }
 
             queryOpts.WaitIndex = queryMeta.LastIndex

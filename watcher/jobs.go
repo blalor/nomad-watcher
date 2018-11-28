@@ -18,32 +18,32 @@ func WatchJobs(jobClient *api.Jobs) <- chan JobEvent {
         "package": "watcher",
         "fn": "WatchJobs",
     })
-    
+
     c := make(chan JobEvent)
     keepWatching := true
-    
+
     go func() {
         queryOpts := &api.QueryOptions{
             WaitTime: 1 * time.Minute,
             AllowStale: true,
         }
-        
+
         for keepWatching {
             log.Debugf("retrieving from index %d", queryOpts.WaitIndex)
             jobStubs, queryMeta, err := jobClient.List(queryOpts)
-            
+
             if err != nil {
                 log.Errorf("unable to list jobs: %v", err)
                 continue
             }
-            
+
             if queryOpts.WaitIndex > 0 {
                 // only emit events after the first run; we're looking for
                 // changes
-                
+
                 // the time when the result was retrieved
                 now := time.Now()
-                
+
                 // @todo track deleted jobs
                 for _, jobStub := range jobStubs {
                     if (queryOpts.WaitIndex < jobStub.CreateIndex) || (queryOpts.WaitIndex < jobStub.ModifyIndex) {
@@ -52,10 +52,10 @@ func WatchJobs(jobClient *api.Jobs) <- chan JobEvent {
                     }
                 }
             }
-            
+
             queryOpts.WaitIndex = queryMeta.LastIndex
         }
     }()
-    
+
     return c
 }
