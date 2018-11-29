@@ -20,7 +20,7 @@ var version string = "undef"
 type Options struct {
     Debug bool       `env:"DEBUG"      long:"debug"      description:"enable debug"`
     LogFile string   `env:"LOG_FILE"   long:"log-file"   description:"path to JSON log file"`
-    EventFile string `env:"EVENT_FILE" long:"event-file" description:"path to JSON event file" required:"true"`
+    EventFile string `env:"EVENT_FILE" long:"event-file" description:"path to JSON event file"`
 }
 
 type event struct {
@@ -71,10 +71,13 @@ func main() {
     log.Debug("hi there! (tickertape tickertape)")
     log.Infof("version: %s", version)
 
-    evtsFp, err := os.OpenFile(opts.EventFile, os.O_WRONLY | os.O_APPEND | os.O_CREATE, 0600)
-    checkError(fmt.Sprintf("error opening %s", opts.EventFile), err)
+    evtsFp := os.Stdout
+    if opts.EventFile != "" {
+        evtsFp, err = os.OpenFile(opts.EventFile, os.O_WRONLY | os.O_APPEND | os.O_CREATE, 0600)
+        checkError(fmt.Sprintf("error opening %s", opts.EventFile), err)
 
-    defer evtsFp.Close()
+        defer evtsFp.Close()
+    }
 
     nomadClient, err := nomad.NewClient(nomad.DefaultConfig())
     checkError("creating Nomad client", err)
