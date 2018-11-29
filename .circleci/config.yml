@@ -1,0 +1,67 @@
+---
+version: 2
+jobs:
+    build-and-test:
+        docker:
+            - image: circleci/golang:1.11
+
+        steps:
+            - checkout
+
+            - restore_cache:
+                keys:
+                    - &CACHE_KEY v1-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+
+            - run: make linux darwin
+
+            - save_cache:
+                key: *CACHE_KEY
+                paths:
+                    - /go/pkg
+
+            - store_test_results:
+                path: "."
+
+            - persist_to_workspace:
+                root: stage
+                paths:
+                    - nomad-*
+
+
+    publish-github-release:
+        docker:
+            - image: cibuilds/github:0.12
+
+        steps:
+            - attach_workspace:
+                at: ~/project
+
+            ## https://circleci.com/docs/2.0/env-vars/#built-in-environment-variables
+            - run:
+                name: Publish Release to GitHub
+                shell: /bin/bash -e -u -o pipefail
+                command: |
+                    ghr \
+                        -u ${CIRCLE_PROJECT_USERNAME} \
+                        -r ${CIRCLE_PROJECT_REPONAME} \
+                        -c ${CIRCLE_SHA1} \
+                        -delete \
+                        ${CIRCLE_TAG} \
+                        ./stage/
+
+workflows:
+    version: 2
+
+    build-and-publish:
+        jobs:
+            - build-and-test
+            - publish-github-release:
+                requires:
+                    - build-and-test
+
+                filters:
+                    branches:
+                        ignore: /.*/
+
+                    tags:
+                        only: /^\d+\.\d+\.\d+$/
