@@ -44,7 +44,6 @@ func WatchEvaluations(evalClient *api.Evaluations) <- chan EvalEvent {
                 // the time when the result was retrieved
                 now := time.Now()
 
-                // @todo track deleted evals
                 for _, eval := range evals {
                     if (queryOpts.WaitIndex < eval.CreateIndex) || (queryOpts.WaitIndex < eval.ModifyIndex) {
                         // evaluation was created or updated

@@ -48,6 +48,8 @@ func WatchNodes(nodeClient *api.Nodes) <- chan NodeEvent {
                 for _, nodeStub := range nodeStubs {
                     if (queryOpts.WaitIndex < nodeStub.CreateIndex) || (queryOpts.WaitIndex < nodeStub.ModifyIndex) {
                         // node was created or updated
+
+                        // @todo consider retrieving full Node
                         c <- NodeEvent{now, queryMeta.LastIndex, nodeStub}
                     }
                 }

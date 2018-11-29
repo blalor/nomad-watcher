@@ -3,6 +3,7 @@ package main
 import (
     "os"
     "fmt"
+    "time"
     "syscall"
     "encoding/json"
 
@@ -20,6 +21,22 @@ type Options struct {
     Debug bool       `env:"DEBUG"      long:"debug"      description:"enable debug"`
     LogFile string   `env:"LOG_FILE"   long:"log-file"   description:"path to JSON log file"`
     EventFile string `env:"EVENT_FILE" long:"event-file" description:"path to JSON event file" required:"true"`
+}
+
+type event struct {
+    Timestamp time.Time   `json:"@timestamp"`
+    WaitIndex uint64      `json:"wait_index"`
+
+    // consistent properties to make filtering events easier without needing
+    // logic about the event payload
+    Type         string `json:"type"`
+    AllocationID string `json:"AllocationID,omitempty"`
+    EvaluationID string `json:"EvaluationID,omitempty"`
+    JobID        string `json:"JobID,omitempty"`
+    NodeID       string `json:"NodeID,omitempty"`
+    DeploymentID string `json:"DeploymentID,omitempty"`
+
+    Event interface{} `json:"event"`
 }
 
 func main() {
@@ -69,37 +86,109 @@ func main() {
     allocEventChan, taskStateEventChan := watcher.WatchAllocations(nomadClient.Allocations())
     go func() {
         for ae := range allocEventChan {
-            eventChan <- ae
+            eventChan <- &event{
+                Timestamp: ae.Timestamp,
+                WaitIndex: ae.WaitIndex,
+
+                Type: "alloc",
+                AllocationID: ae.Allocation.ID,
+                EvaluationID: ae.Allocation.EvalID,
+                JobID: ae.Allocation.JobID,
+                NodeID: ae.Allocation.NodeID,
+                DeploymentID: ae.Allocation.DeploymentID,
+
+                Event: ae.Allocation,
+            }
         }
     }()
 
     go func() {
         for tse := range taskStateEventChan {
-            eventChan <- tse
+            eventChan <- &event{
+                Timestamp: tse.Timestamp,
+                WaitIndex: tse.WaitIndex,
+
+                Type: "task_state",
+                AllocationID: tse.TaskState.AllocID,
+                EvaluationID: tse.TaskState.EvalID,
+                JobID: tse.TaskState.JobID,
+                NodeID: tse.TaskState.NodeID,
+                DeploymentID: tse.TaskState.DeploymentID,
+
+                Event: tse.TaskState,
+            }
         }
     }()
 
     go func() {
         for ee := range watcher.WatchEvaluations(nomadClient.Evaluations()) {
-            eventChan <- ee
+            eventChan <- &event{
+                Timestamp: ee.Timestamp,
+                WaitIndex: ee.WaitIndex,
+
+                Type: "eval",
+                AllocationID: "", // evals beget allocs
+                EvaluationID: ee.Evaluation.ID,
+                JobID: ee.Evaluation.JobID,
+                NodeID: ee.Evaluation.NodeID,
+                DeploymentID: ee.Evaluation.DeploymentID,
+
+                Event: ee.Evaluation,
+            }
         }
     }()
 
     go func() {
         for je := range watcher.WatchJobs(nomadClient.Jobs()) {
-            eventChan <- je
+            eventChan <- &event{
+                Timestamp: je.Timestamp,
+                WaitIndex: je.WaitIndex,
+
+                Type: "job",
+                AllocationID: "",
+                EvaluationID: "",
+                JobID: *je.Job.ID,
+                NodeID: "",
+                DeploymentID: "",
+
+                Event: je.Job,
+            }
         }
     }()
 
     go func() {
         for ne := range watcher.WatchNodes(nomadClient.Nodes()) {
-            eventChan <- ne
+            eventChan <- &event{
+                Timestamp: ne.Timestamp,
+                WaitIndex: ne.WaitIndex,
+
+                Type: "node",
+                AllocationID: "",
+                EvaluationID: "",
+                JobID: "",
+                NodeID: ne.NodeListStub.ID,
+                DeploymentID: "",
+
+                Event: ne.NodeListStub,
+            }
         }
     }()
 
     go func() {
         for de := range watcher.WatchDeployments(nomadClient.Deployments()) {
-            eventChan <- de
+            eventChan <- &event{
+                Timestamp: de.Timestamp,
+                WaitIndex: de.WaitIndex,
+
+                Type: "deploy",
+                AllocationID: "",
+                EvaluationID: "",
+                JobID: de.Deployment.JobID,
+                NodeID: "",
+                DeploymentID: de.Deployment.ID,
+
+                Event: de.Deployment,
+            }
         }
     }()
 

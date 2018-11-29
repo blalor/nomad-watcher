@@ -1,123 +1,51 @@
-Who watches the watcher?
+# Who watches the watcher?
 
-This is a simple service that watches [Nomad](https://nomadproject.io)'s nodes, jobs, allocations, and evaluations, and writes the events to a file.  The intention is that they'll be shipped to a central log collection system so users and operators can get insight into what Nomad is doing.
+This is a simple service that watches [Nomad](https://nomadproject.io)'s nodes, jobs, deployments, evaluations, allocations, and task states, and writes the events to a file.  The intention is that they'll be shipped to a central log collection system so users and operators can get insight into what Nomad is doing.
 
 ## usage
 
     nomad-watcher --events-file=nomad_events.json
 
-## sample events
+## events
 
-prettified; the actual log file contains one event per line.
+The events all have the same basic structure:
 
-### eval
+* `@timestamp` — Timestamp in RFC 3339 format.
+* `wait_index` — The value of the `X-Nomad-Index` header in the response to the [blocking query](https://www.nomadproject.io/api/index.html#blocking-queries)
+* `type` — The type of the event; one of `alloc`, `task_state`, `eval`, `job`, `node`, or `deploy`.
+* `AllocationID` — The event's allocation ID, if applicable.
+* `EvaluationID` — The event's evaluation ID, if applicable.
+* `JobID` — The event's job ID, if applicable.
+* `NodeID` — The event's node ID, if applicable.
+* `DeploymentID` — The event's deployment ID, if applicable.
+* `event` — The details of the triggered event. This is the serialized [Nomad API struct](https://godoc.org/github.com/hashicorp/nomad/api).
 
-```json
-{
-  "@timestamp": "2017-03-08T05:50:02.94624366Z",
-  "wait_index": 344274,
-  "eval": {
-    "ID": "4efd75c0-d183-e535-53cb-f223fe97f821",
-    "Priority": 50,
-    "Type": "service",
-    "TriggeredBy": "job-deregister",
-    "JobID": "some-job/periodic-1488936600",
-    "JobModifyIndex": 344269,
-    "NodeID": "",
-    "NodeModifyIndex": 0,
-    "Status": "complete",
-    "StatusDescription": "",
-    "Wait": 0,
-    "NextEval": "",
-    "PreviousEval": "",
-    "BlockedEval": "",
-    "FailedTGAllocs": null,
-    "QueuedAllocations": {},
-    "CreateIndex": 344270,
-    "ModifyIndex": 344274
-  }
-}
-```
+# nomad-tail
 
-### job
+I found myself wanting to see the events scrolling by in a console window, so I shaved a yak and created `nomad-tail`.
 
-```json
-{
-  "@timestamp": "2017-03-08T05:45:05.341084793Z",
-  "wait_index": 344261,
-  "job": {
-    "ID": "some-job/periodic-1488951900",
-    "ParentID": "some-job",
-    "Name": "some-job/periodic-1488951900",
-    "Type": "batch",
-    "Priority": 50,
-    "Status": "dead",
-    "StatusDescription": "",
-    "JobSummary": {
-      "JobID": "some-job/periodic-1488951900",
-      "Summary": {
-        "importer": {
-          "Queued": 0,
-          "Complete": 1,
-          "Failed": 0,
-          "Running": 0,
-          "Starting": 0,
-          "Lost": 0
-        }
-      },
-      "Children": {
-        "Pending": 0,
-        "Running": 0,
-        "Dead": 0
-      },
-      "CreateIndex": 344253,
-      "ModifyIndex": 344261
-    },
-    "CreateIndex": 344253,
-    "ModifyIndex": 344261,
-    "JobModifyIndex": 344253
-  }
-}
-```
+## usage
 
-### task event
+    nomad-tail
 
-```json
-{
-  "@timestamp": "2017-03-13T23:02:28.859966757-04:00",
-  "wait_index": 401683,
-  "JobID": "some-job",
-  "AllocID": "16cc9300-2cf4-d539-d6e2-ef70662476e5",
-  "AllocName": "some-job.prod[0]",
-  "TaskGroup": "prod",
-  "EvalID": "a47889d1-4254-a819-eb09-6db6717e72f4",
-  "NodeID": "808fc706-79d7-7054-27fa-f405d85d179d",
-  "Task": "some-job",
-  "State": "pending",
-  "Failed": false,
-  "TaskEvent": {
-    "Type": "Restarting",
-    "Time": 1489460548859966700,
-    "FailsTask": false,
-    "RestartReason": "Restart within policy",
-    "SetupError": "",
-    "DriverError": "",
-    "DriverMessage": "",
-    "ExitCode": 0,
-    "Signal": 0,
-    "Message": "",
-    "KillReason": "",
-    "KillTimeout": 0,
-    "KillError": "",
-    "StartDelay": 16705495226,
-    "DownloadError": "",
-    "ValidationError": "",
-    "DiskLimit": 0,
-    "DiskSize": 0,
-    "FailedSibling": "",
-    "VaultError": "",
-    "TaskSignalReason": "",
-    "TaskSignal": ""
-  }
-}
-```
+## sample output
+
+Everything's colorized, but you'll have to take my word for it:
+
+    <eval  > E[ddfe9d8a] system-date job-deregister pending      D[        ] N[        ] next: E[        ] prev: E[        ] block: E[        ]
+    <job   > system-date v001 system 050 dead
+    <eval  > E[ddfe9d8a] system-date job-deregister complete     D[        ] N[        ] next: E[        ] prev: E[        ] block: E[        ]
+    <alloc > A[b618a2de] system-date v000 E[2b880115] N[47834f73] stop alloc not needed due to job update running
+    <task  > A[b618a2de] system-date.date[0] dead          Killing DisplayMessage=Sent interrupt. Waiting 5s before force killing
+    <task  > A[b618a2de] system-date.date[0] dead          Killed DisplayMessage=Task successfully killed
+    <alloc > A[b618a2de] system-date v000 E[2b880115] N[47834f73] stop alloc not needed due to job update complete
+
+No timestamps are shown to reduce clutter. iTerm2's "Show Timestamps" feature works well here.
+
+# building
+
+You need a Go development environment.  Modules are used, so Go >= 1.11 is required.
+
+    make
+  
+Binaries are placed into `stage/`.

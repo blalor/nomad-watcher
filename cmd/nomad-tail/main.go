@@ -5,6 +5,7 @@ import (
     "fmt"
     "strings"
     "reflect"
+    "math"
 
     flags "github.com/jessevdk/go-flags"
 
@@ -27,12 +28,33 @@ type Options struct {
 }
 
 var (
-    c_node   = ansi.ColorFunc("yellow")  // node: yellow
-    c_eval   = ansi.ColorFunc("blue")    // eval: blue
-    c_task   = ansi.ColorFunc("red")     // task: red
-    c_alloc  = ansi.ColorFunc("green")   // alloc: green
-    c_job    = ansi.ColorFunc("magenta") // job: magenta
-    c_deploy = ansi.ColorFunc("cyan")    // deploy: cyan
+    c_node   = ansi.ColorFunc("yellow")
+    c_eval   = ansi.ColorFunc("blue")
+    c_task   = ansi.ColorFunc("red")
+    c_alloc  = ansi.ColorFunc("green")
+    c_job    = ansi.ColorFunc("magenta")
+    c_deploy = ansi.ColorFunc("cyan")
+    c_under  = ansi.ColorFunc("white+u")
+    c_fail   = ansi.ColorFunc("white+b:red+h")
+)
+
+var (
+    TMPL_ALLOC_ID  = "A[" + c_alloc("%-8s") + "]"
+    TMPL_EVAL_ID   = "E[" + c_eval("%-8s") + "]"
+    TMPL_NODE_ID   = "N[" + c_node("%-8s") + "]"
+    TMPL_DEPLOY_ID = "D[" + c_node("%-8s") + "]"
+
+    TMPL_JOB_ID = func(jobIdLen float64) string {
+        return c_job(fmt.Sprintf("%%-%ds", int(jobIdLen)))
+    }
+
+    TMPL_ALLOC_NAME = func(allocNameLen float64) string {
+        return c_alloc(fmt.Sprintf("%%-%ds", int(allocNameLen)))
+    }
+
+    TMPL_NODE_NAME = func(nodeNameLen float64) string {
+        return c_node(fmt.Sprintf("%%-%ds", int(nodeNameLen)))
+    }
 )
 
 func trimId(id string) string {
@@ -104,28 +126,49 @@ func main() {
         }()
     }
 
+    jobIdLen := float64(0)
+    allocNameLen := float64(0)
+    nodeNameLen := float64(0)
     for e := range eventChan {
         switch typ := e.(type) {
             case watcher.AllocEvent:
-                a := e.(watcher.AllocEvent).AllocationListStub
+                a := e.(watcher.AllocEvent).Allocation
+                jobIdLen = math.Max(jobIdLen, float64(len(a.JobID)))
 
-                // <alloc> A[59f464da] E[1e914a0b] N[9d451b2b] example     stop         'alloc not needed due to job update' running      ''
+                // <alloc> A[59f464da] example stop 'alloc not needed due to job update' running '' E[1e914a0b] N[9d451b2b]
                 fmt.Printf(
-                    "%s A[%s] E[%s] N[%s] %-20s %-12s '%s' %-12s '%s'\n",
+                    strings.Join(
+                        []string{
+                            c_alloc("<alloc >"),
+                            TMPL_ALLOC_ID,
+                            TMPL_JOB_ID(jobIdLen),
+                            c_job("v%03d"),
+                            TMPL_EVAL_ID,
+                            TMPL_NODE_ID,
+                            c_under("%s"),
+                            "%s",
+                            c_under("%s"),
+                            "%s\n",
+                        },
+                        " ",
+                    ),
 
-                    c_alloc("<alloc >"),
-                    c_alloc(trimId(a.ID)),
-                    c_eval(trimId(a.EvalID)),
-                    c_node(trimId(a.NodeID)),
-                    c_job(a.JobID),
+                    trimId(a.ID),
+                    a.JobID,
+                    *a.Job.Version,
+                    trimId(a.EvalID),
+                    trimId(a.NodeID),
                     a.DesiredStatus,
                     a.DesiredDescription,
                     a.ClientStatus,
                     a.ClientDescription,
                 )
 
+
             case watcher.TaskStateEvent:
-                t := e.(watcher.TaskStateEvent)
+                t := e.(watcher.TaskStateEvent).TaskState
+                allocNameLen = math.Max(allocNameLen, float64(len(t.AllocName)))
+
                 te := t.TaskEvent
 
                 // only output key/value pairs of TaskEvent that are non-empty strings
@@ -139,23 +182,30 @@ func main() {
                         structVal := field.Interface().(string)
 
                         if ! (structName == "TaskSignal" || structName == "Type") && structVal != "" {
-                            err_strs = append(err_strs, structName + ": " + structVal)
+                            err_strs = append(err_strs, c_under(structName) + "=" + structVal)
                         }
                     }
                 }
 
-                failedStr := "N"
+                failedStr := ""
                 if t.Failed {
-                    failedStr = "Y"
+                    failedStr = c_fail("FAIL")
                 }
 
-                // <task > A[7a5be77d] example.cache[0] pending      failed? N Driver DriverMessage: Downloading image redis:3.2
+                // <task > A[7a5be77d] example.cache[0] pending      FAIL Driver DriverMessage: Downloading image redis:3.2
                 fmt.Printf(
-                    "%s A[%s] %-20s %-12s failed? %s '%s' %s\n",
+                    strings.Join(
+                        []string{
+                            c_task("<task  >"),
+                            TMPL_ALLOC_ID,
+                            TMPL_ALLOC_NAME(allocNameLen),
+                            "%-12s %s %s %s\n",
+                        },
+                        " ",
+                    ),
 
-                    c_task("<task  >"),
-                    c_alloc(trimId(t.AllocID)),
-                    c_alloc(t.AllocName),
+                    trimId(t.AllocID),
+                    t.AllocName,
                     t.State,
                     failedStr,
                     te.Type,
@@ -164,62 +214,103 @@ func main() {
 
             case watcher.EvalEvent:
                 e := e.(watcher.EvalEvent).Evaluation
+                jobIdLen = math.Max(jobIdLen, float64(len(e.JobID)))
 
-                // <eval > E[a0dfc1cf] deployment-watcher example     N[        ] complete     next: E[        ] prev: E[        ] block: E[        ]
+                // <eval > E[a0dfc1cf] example deployment-watcher D[        ] N[        ] complete     next: E[        ] prev: E[        ] block: E[        ]
                 fmt.Printf(
-                    "%s E[%s] %-14s %-20s N[%-8s] %-12s next: E[%-8s] prev: E[%-8s] block: E[%-8s]\n",
+                    strings.Join(
+                        []string{
+                            c_eval("<eval  >"),
+                            TMPL_EVAL_ID,
+                            TMPL_JOB_ID(jobIdLen),
+                            "%-14s",
+                            "%-12s",
+                            TMPL_DEPLOY_ID,
+                            TMPL_NODE_ID,
+                            "next: " + TMPL_EVAL_ID,
+                            "prev: " + TMPL_EVAL_ID,
+                            "block: " + TMPL_EVAL_ID + "\n",
+                        },
+                        " ",
+                    ),
 
-                    c_eval("<eval  >"),
-                    c_eval(trimId(e.ID)),
+                    trimId(e.ID),
+                    e.JobID,
                     e.TriggeredBy,
-                    c_job(e.JobID),
-                    c_node(trimId(e.NodeID)),
                     e.Status,
-                    c_eval(trimId(e.NextEval)),
-                    c_eval(trimId(e.PreviousEval)),
-                    c_eval(trimId(e.BlockedEval)),
+                    trimId(e.DeploymentID),
+                    trimId(e.NodeID),
+                    trimId(e.NextEval),
+                    trimId(e.PreviousEval),
+                    trimId(e.BlockedEval),
                 )
 
-
             case watcher.JobEvent:
-                j := e.(watcher.JobEvent).JobListStub
+                j := e.(watcher.JobEvent).Job
+                jobIdLen = math.Max(jobIdLen, float64(len(*j.ID)))
 
-                // <job  > service 050 example     pending
+                // <job  > example service 050      pending
                 fmt.Printf(
-                    "%s %s %03d %-20s %s\n",
+                    strings.Join(
+                        []string{
+                            c_job("<job   >"),
+                            TMPL_JOB_ID(jobIdLen),
+                            c_job("v%03d"),
+                            "%s %03d %s\n",
+                        },
+                        " ",
+                    ),
 
-                    c_job("<job   >"),
-                    j.Type,
-                    j.Priority,
-                    c_job(j.ID),
-                    j.Status,
+                    *j.ID,
+                    *j.Version,
+                    *j.Type,
+                    *j.Priority,
+                    *j.Status,
                 )
 
             case watcher.NodeEvent:
                 n := e.(watcher.NodeEvent).NodeListStub
+                nodeNameLen = math.Max(nodeNameLen, float64(len(n.Name)))
 
                 // <node > N[9d451b2b] Scooter.fios-router.home initializing false
                 fmt.Printf(
-                    "%s N[%-8s] %s %-12s %-5t\n",
+                    strings.Join(
+                        []string{
+                            c_node("<node  >"),
+                            TMPL_NODE_ID,
+                            TMPL_NODE_NAME(nodeNameLen),
+                            "%s %-5t\n",
+                        },
+                        " ",
+                    ),
 
-                    c_node("<node  >"),
-                    c_node(trimId(n.ID)),
-                    c_node(n.Name),
+                    trimId(n.ID),
+                    n.Name,
                     n.Status,
                     n.Drain,
                 )
 
+
             case watcher.DeployEvent:
                 d := e.(watcher.DeployEvent).Deployment
+                jobIdLen = math.Max(jobIdLen, float64(len(d.JobID)))
 
                 // <deploy> D[b17cb6a9] example     v253 running Deployment is running
                 fmt.Printf(
-                    "%s D[%-8s] %-20s %-4s %-12s %s\n",
+                    strings.Join(
+                        []string{
+                            c_node("<deploy>"),
+                            TMPL_DEPLOY_ID,
+                            TMPL_JOB_ID(jobIdLen),
+                            c_job("v%03d"),
+                            "%s %s\n",
+                        },
+                        " ",
+                    ),
 
-                    c_deploy("<deploy>"),
-                    c_deploy(trimId(d.ID)),
-                    c_job(d.JobID),
-                    c_job(string(d.JobVersion)),
+                    trimId(d.ID),
+                    d.JobID,
+                    d.JobVersion,
                     d.Status,
                     d.StatusDescription,
                 )

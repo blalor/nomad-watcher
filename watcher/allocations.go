@@ -8,16 +8,12 @@ import (
 )
 
 type AllocEvent struct {
-    Timestamp  time.Time                       `json:"@timestamp"`
-    WaitIndex  uint64                          `json:"wait_index"`
-    AllocationListStub *api.AllocationListStub `json:"alloc"`
+    Timestamp  time.Time       `json:"@timestamp"`
+    WaitIndex  uint64          `json:"wait_index"`
+    Allocation *api.Allocation `json:"alloc"`
 }
 
-// this is a derived event from an allocation. Time comes from TaskEvent.Time.
-type TaskStateEvent struct {
-    Timestamp  time.Time `json:"@timestamp"`
-    WaitIndex  uint64    `json:"wait_index"`
-
+type TaskState struct {
     // copied from the Allocation
     JobID              string // "elasticsearch-curator/periodic-1488845700"
     AllocID            string // "29cdfa9e-820a-bab8-4eda-45b000397719"
@@ -25,6 +21,7 @@ type TaskStateEvent struct {
     TaskGroup          string // "curator"
     EvalID             string // "8eb39148-7a00-a164-920f-d59143f72b74"
     NodeID             string // "f8fa01e0-351b-7652-d80e-10547fa3bfe8"
+    DeploymentID       string // "2df116a0-4bc2-823d-4db7-a9959f42d6a0"
 
     // Task comes from the keys of TaskStates
     Task string
@@ -35,6 +32,13 @@ type TaskStateEvent struct {
 
     // the actual Task Event (phew!)
     TaskEvent *api.TaskEvent
+}
+
+// this is a derived event from an allocation. Time comes from TaskEvent.Time.
+type TaskStateEvent struct {
+    Timestamp  time.Time  `json:"@timestamp"`
+    WaitIndex  uint64     `json:"wait_index"`
+    TaskState  TaskState  `json:"task_state"`
 }
 
 func WatchAllocations(allocClient *api.Allocations) (<- chan AllocEvent, <- chan TaskStateEvent) {
@@ -73,18 +77,17 @@ func WatchAllocations(allocClient *api.Allocations) (<- chan AllocEvent, <- chan
                 // only emit events after the first run; we're looking for
                 // changes
 
-                // the time when the result was retrieved
-                now := time.Now()
-
                 // map of allocation ids in the current result
                 extantAllocs := make(map[string]bool)
 
                 for _, allocStub := range allocStubs {
-                    ts := now
-
                     allocId := allocStub.ID
                     extantAllocs[allocId] = true
 
+                    // DeploymentID is only available in the alloc
+                    var deployId string
+
+                    ts := time.Unix(0, allocStub.ModifyTime)
                     if (allocStub.CreateIndex == allocStub.ModifyIndex) {
                         // allocation just created; use CreateTime field
                         ts = time.Unix(0, allocStub.CreateTime)
@@ -94,15 +97,48 @@ func WatchAllocations(allocClient *api.Allocations) (<- chan AllocEvent, <- chan
                     allocationUpdated := (queryOpts.WaitIndex < allocStub.CreateIndex) || (queryOpts.WaitIndex < allocStub.ModifyIndex)
 
                     if allocationUpdated {
+                        // retrieve alloc details so we can get job details
+                        alloc, _, err := allocClient.Info(allocStub.ID, &api.QueryOptions{AllowStale: true})
+                        if err != nil {
+                            log.Errorf("unable to retrieve alloc for %s: %v", allocStub.ID, err)
+                            continue
+                        }
+
+                        deployId = alloc.DeploymentID
+
+                        // the alloc's ModifyIndex is often different. copy the
+                        // stub's info into the alloc, so that the alloc is a
+                        // more fleshed-out version of the stub.
+                        // JobVersion is not in the Allocation, only the stub
+
+                        if allocStub.JobVersion != *alloc.Job.Version {
+                            log.Errorf("fack. allocStub.JobVersion (%d) != *alloc.Job.Version (%d)", allocStub.JobVersion, *alloc.Job.Version)
+                        }
+
+                        // these seem most likely to change between the stub and
+                        // the retrieved allocation
+                        alloc.DesiredStatus      = allocStub.DesiredStatus
+                        alloc.DesiredDescription = allocStub.DesiredDescription
+                        alloc.ClientStatus       = allocStub.ClientStatus
+                        alloc.ClientDescription  = allocStub.ClientDescription
+                        alloc.TaskStates         = allocStub.TaskStates
+                        alloc.DeploymentStatus   = allocStub.DeploymentStatus
+                        alloc.RescheduleTracker  = allocStub.RescheduleTracker
+                        alloc.CreateIndex        = allocStub.CreateIndex
+                        alloc.ModifyIndex        = allocStub.ModifyIndex
+                        alloc.CreateTime         = allocStub.CreateTime
+                        alloc.ModifyTime         = allocStub.ModifyTime
+
                         allocEventChan <- AllocEvent{
                             ts,
                             queryMeta.LastIndex,
-                            allocStub,
+                            alloc,
                         }
                     }
 
                     lastTaskEventTime := allocTaskEventTimes[allocId]
                     for taskName, taskState := range allocStub.TaskStates {
+                        // assumption is taskState.Events is always ordered
                         for _, taskEvent := range taskState.Events {
                             if taskEvent.Time > lastTaskEventTime {
                                 // new TaskEvent
@@ -113,23 +149,26 @@ func WatchAllocations(allocClient *api.Allocations) (<- chan AllocEvent, <- chan
                                         Timestamp: time.Unix(0, taskEvent.Time),
                                         WaitIndex: queryMeta.LastIndex,
 
-                                        JobID:     allocStub.JobID,
-                                        AllocID:   allocId,
-                                        AllocName: allocStub.Name,
-                                        TaskGroup: allocStub.TaskGroup,
-                                        EvalID:    allocStub.EvalID,
-                                        NodeID:    allocStub.NodeID,
+                                        TaskState: TaskState{
+                                            JobID:        allocStub.JobID,
+                                            AllocID:      allocId,
+                                            AllocName:    allocStub.Name,
+                                            TaskGroup:    allocStub.TaskGroup,
+                                            EvalID:       allocStub.EvalID,
+                                            NodeID:       allocStub.NodeID,
+                                            DeploymentID: deployId,
 
-                                        Task:   taskName,
-                                        State:  taskState.State,
-                                        Failed: taskState.Failed,
+                                            Task:   taskName,
+                                            State:  taskState.State,
+                                            Failed: taskState.Failed,
 
-                                        TaskEvent: taskEvent,
+                                            TaskEvent: taskEvent,
+                                        },
                                     }
                                 }
 
                                 // store the timestamp of the most recent task
-                                // event; assumption is taskState.Events is always ordered
+                                // event
                                 allocTaskEventTimes[allocId] = taskEvent.Time
                             }
                         }
