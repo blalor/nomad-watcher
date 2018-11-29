@@ -10,10 +10,10 @@ CURRENT_DIR := $(patsubst %/,%,$(dir $(MKFILE_PATH)))
 ## all non-test source files
 SOURCES := go.mod go.sum $(shell go list -f '{{range .GoFiles}}{{ $$.Dir }}/{{.}} {{end}}' ./... | sed -e 's@$(CURRENT_DIR)/@@g' )
 
-CMDS := stage/nomad-watcher stage/nomad-tail
+TEST_SOURCES := go.mod go.sum $(shell go list -f '{{range .XTestGoFiles}}{{ $$.Dir }}/{{.}} {{end}}' ./... | sed -e 's@$(CURRENT_DIR)/@@g' )
 
 .PHONY: all
-all: $(CMDS)
+all: build
 
 .PHONY: clean
 clean:
@@ -27,7 +27,7 @@ $(GINKGO):
 .PHONY: tools
 tools: $(GINKGO)
 
-stage/.tests-ran: $(SOURCES) $(GINKGO)
+stage/.tests-ran: $(SOURCES) $(TEST_SOURCES) $(GINKGO)
 	@$(GINKGO) -r
 	@touch $@
 
@@ -38,5 +38,19 @@ test: stage/.tests-ran
 watch-tests: $(GINKGO)
 	@$(GINKGO) watch -r
 
-$(CMDS): $(SOURCES) | test
+.PHONY: build
+build: stage/nomad-watcher stage/nomad-tail
+
+stage/nomad-watcher stage/nomad-tail: $(SOURCES) | test
 	go build -o $@ -ldflags '-X main.version=$(VER)' ./cmd/$(notdir $@)
+
+.PHONY: linux
+linux: stage/nomad-watcher-linux stage/nomad-tail-linux
+
+stage/nomad-watcher-linux stage/nomad-tail-linux: $(SOURCES) | test
+	GOOS=linux GOARCH=amd64 go build -o $@ -ldflags '-X main.version=$(VER)' ./cmd/$(patsubst %-linux,%,$(notdir $@))
+
+.PHONY: darwin
+darwin: stage/nomad-watcher-darwin stage/nomad-tail-darwin
+stage/nomad-watcher-darwin stage/nomad-tail-darwin: $(SOURCES) | test
+	GOOS=darwin GOARCH=amd64 go build -o $@ -ldflags '-X main.version=$(VER)' ./cmd/$(patsubst %-darwin,%,$(notdir $@))
