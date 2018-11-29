@@ -269,7 +269,7 @@ func main() {
                 )
 
             case watcher.NodeEvent:
-                n := e.(watcher.NodeEvent).NodeListStub
+                n := e.(watcher.NodeEvent).Node
                 nodeNameLen = math.Max(nodeNameLen, float64(len(n.Name)))
 
                 // <node > N[9d451b2b] Scooter.fios-router.home initializing false

@@ -8,9 +8,9 @@ import (
 )
 
 type NodeEvent struct {
-    Timestamp  time.Time           `json:"@timestamp"`
-    WaitIndex  uint64              `json:"wait_index"`
-    NodeListStub *api.NodeListStub `json:"node"`
+    Timestamp  time.Time `json:"@timestamp"`
+    WaitIndex  uint64    `json:"wait_index"`
+    Node       *api.Node `json:"node"`
 }
 
 func WatchNodes(nodeClient *api.Nodes) <- chan NodeEvent {
@@ -49,8 +49,14 @@ func WatchNodes(nodeClient *api.Nodes) <- chan NodeEvent {
                     if (queryOpts.WaitIndex < nodeStub.CreateIndex) || (queryOpts.WaitIndex < nodeStub.ModifyIndex) {
                         // node was created or updated
 
-                        // @todo consider retrieving full Node
-                        c <- NodeEvent{now, queryMeta.LastIndex, nodeStub}
+                        // retrieve node details
+                        node, _, err := nodeClient.Info(nodeStub.ID,  &api.QueryOptions{AllowStale: true})
+                        if err != nil {
+                            log.Errorf("unable to retrieve node %s: %v", nodeStub.ID, err)
+                            continue
+                        }
+
+                        c <- NodeEvent{now, queryMeta.LastIndex, node}
                     }
                 }
             }

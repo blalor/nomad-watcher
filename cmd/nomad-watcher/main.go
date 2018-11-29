@@ -166,10 +166,10 @@ func main() {
                 AllocationID: "",
                 EvaluationID: "",
                 JobID: "",
-                NodeID: ne.NodeListStub.ID,
+                NodeID: ne.Node.ID,
                 DeploymentID: "",
 
-                Event: ne.NodeListStub,
+                Event: ne.Node,
             }
         }
     }()
