@@ -54,7 +54,13 @@ workflows:
 
     build-and-publish:
         jobs:
-            - build-and-test
+            - build-and-test:
+                # required since `publish-github-release` has tag filters AND
+                # requires `build-and-test`
+                filters:
+                    tags:
+                      only: /.*/
+
             - publish-github-release:
                 requires:
                     - build-and-test
