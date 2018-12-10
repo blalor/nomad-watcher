@@ -7,6 +7,7 @@ import (
     "reflect"
     "math"
 
+    log "github.com/sirupsen/logrus"
     flags "github.com/jessevdk/go-flags"
 
     nomad "github.com/hashicorp/nomad/api"
@@ -25,6 +26,8 @@ type Options struct {
     NoWatchJobs       bool `long:"no-watch-jobs"`
     NoWatchNodes      bool `long:"no-watch-nodes"`
     NoWatchDeploys    bool `long:"no-watch-deploys"`
+
+    Debug bool `env:"DEBUG" long:"debug" description:"enable debug"`
 }
 
 var (
@@ -67,6 +70,10 @@ func main() {
     _, err := flags.Parse(&opts)
     if err != nil {
         os.Exit(1)
+    }
+
+    if opts.Debug {
+        log.SetLevel(log.DebugLevel)
     }
 
     nomadClient, err := nomad.NewClient(nomad.DefaultConfig())
