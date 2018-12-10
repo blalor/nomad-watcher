@@ -45,7 +45,7 @@ var (
     TMPL_ALLOC_ID  = "A[" + c_alloc("%-8s") + "]"
     TMPL_EVAL_ID   = "E[" + c_eval("%-8s") + "]"
     TMPL_NODE_ID   = "N[" + c_node("%-8s") + "]"
-    TMPL_DEPLOY_ID = "D[" + c_node("%-8s") + "]"
+    TMPL_DEPLOY_ID = "D[" + c_deploy("%-8s") + "]"
 
     TMPL_JOB_ID = func(jobIdLen float64) string {
         return c_job(fmt.Sprintf("%%-%ds", int(jobIdLen)))
