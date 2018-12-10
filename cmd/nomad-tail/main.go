@@ -31,14 +31,15 @@ type Options struct {
 }
 
 var (
-    c_node   = ansi.ColorFunc("yellow")
-    c_eval   = ansi.ColorFunc("blue")
-    c_task   = ansi.ColorFunc("red")
-    c_alloc  = ansi.ColorFunc("green")
-    c_job    = ansi.ColorFunc("magenta")
-    c_deploy = ansi.ColorFunc("cyan")
-    c_under  = ansi.ColorFunc("white+u")
-    c_fail   = ansi.ColorFunc("white+b:red+h")
+    c_node   =     ansi.ColorFunc("yellow")
+    c_node_state = ansi.ColorFunc("white")
+    c_eval   =     ansi.ColorFunc("blue")
+    c_task   =     ansi.ColorFunc("red")
+    c_alloc  =     ansi.ColorFunc("green")
+    c_job    =     ansi.ColorFunc("magenta")
+    c_deploy =     ansi.ColorFunc("cyan")
+    c_under  =     ansi.ColorFunc("white+u")
+    c_fail   =     ansi.ColorFunc("white+b:red+h")
 )
 
 var (
@@ -118,9 +119,17 @@ func main() {
     }
 
     if ! opts.NoWatchNodes {
+        nodeEventChan, nodeStateEventChan := watcher.WatchNodes(nomadClient.Nodes())
+
         go func() {
-            for ne := range watcher.WatchNodes(nomadClient.Nodes()) {
+            for ne := range nodeEventChan {
                 eventChan <- ne
+            }
+        }()
+
+        go func() {
+            for nse := range nodeStateEventChan {
+                eventChan <- nse
             }
         }()
     }
@@ -146,7 +155,7 @@ func main() {
                 fmt.Printf(
                     strings.Join(
                         []string{
-                            c_alloc("<alloc >"),
+                            c_alloc("<alloc     >"),
                             TMPL_ALLOC_ID,
                             TMPL_JOB_ID(jobIdLen),
                             c_job("v%03d"),
@@ -199,11 +208,11 @@ func main() {
                     failedStr = c_fail("FAIL")
                 }
 
-                // <task > A[7a5be77d] example.cache[0] pending      FAIL Driver DriverMessage: Downloading image redis:3.2
+                // <task     > A[7a5be77d] example.cache[0] pending      FAIL Driver DriverMessage: Downloading image redis:3.2
                 fmt.Printf(
                     strings.Join(
                         []string{
-                            c_task("<task  >"),
+                            c_task("<task      >"),
                             TMPL_ALLOC_ID,
                             TMPL_ALLOC_NAME(allocNameLen),
                             "%-12s %s %s %s\n",
@@ -223,11 +232,11 @@ func main() {
                 e := e.(watcher.EvalEvent).Evaluation
                 jobIdLen = math.Max(jobIdLen, float64(len(e.JobID)))
 
-                // <eval > E[a0dfc1cf] example deployment-watcher D[        ] N[        ] complete     next: E[        ] prev: E[        ] block: E[        ]
+                // <eval     > E[a0dfc1cf] example deployment-watcher D[        ] N[        ] complete     next: E[        ] prev: E[        ] block: E[        ]
                 fmt.Printf(
                     strings.Join(
                         []string{
-                            c_eval("<eval  >"),
+                            c_eval("<eval      >"),
                             TMPL_EVAL_ID,
                             TMPL_JOB_ID(jobIdLen),
                             "%-14s",
@@ -256,11 +265,11 @@ func main() {
                 j := e.(watcher.JobEvent).Job
                 jobIdLen = math.Max(jobIdLen, float64(len(*j.ID)))
 
-                // <job  > example service 050      pending
+                // <job      > example service 050      pending
                 fmt.Printf(
                     strings.Join(
                         []string{
-                            c_job("<job   >"),
+                            c_job("<job       >"),
                             TMPL_JOB_ID(jobIdLen),
                             c_job("v%03d"),
                             "%s %03d %s\n",
@@ -279,11 +288,11 @@ func main() {
                 n := e.(watcher.NodeEvent).Node
                 nodeNameLen = math.Max(nodeNameLen, float64(len(n.Name)))
 
-                // <node > N[9d451b2b] Scooter.fios-router.home initializing false
+                // <node      > N[9d451b2b] Scooter.fios-router.home initializing false
                 fmt.Printf(
                     strings.Join(
                         []string{
-                            c_node("<node  >"),
+                            c_node("<node      >"),
                             TMPL_NODE_ID,
                             TMPL_NODE_NAME(nodeNameLen),
                             "status: %s eligibility: %s\n",
@@ -295,6 +304,29 @@ func main() {
                     n.Name,
                     n.Status,
                     n.SchedulingEligibility,
+                )
+
+
+            case watcher.NodeStateEvent:
+                ns := e.(watcher.NodeStateEvent).NodeState
+                nodeNameLen = math.Max(nodeNameLen, float64(len(ns.NodeName)))
+
+                // <node_state> N[9d451b2b] Scooter.fios-router.home Drain: Node drain strategy set
+                fmt.Printf(
+                    strings.Join(
+                        []string{
+                            c_node_state("<node_state>"),
+                            TMPL_NODE_ID,
+                            TMPL_NODE_NAME(nodeNameLen),
+                            c_under("%s") + ": %s\n",
+                        },
+                        " ",
+                    ),
+
+                    trimId(ns.NodeID),
+                    ns.NodeName,
+                    ns.NodeEvent.Subsystem,
+                    ns.NodeEvent.Message,
                 )
 
 

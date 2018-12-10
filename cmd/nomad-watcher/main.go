@@ -159,8 +159,9 @@ func main() {
         }
     }()
 
+    nodeEventChan, nodeStateEventChan := watcher.WatchNodes(nomadClient.Nodes())
     go func() {
-        for ne := range watcher.WatchNodes(nomadClient.Nodes()) {
+        for ne := range nodeEventChan {
             eventChan <- &event{
                 Timestamp: ne.Timestamp,
                 WaitIndex: ne.WaitIndex,
@@ -173,6 +174,24 @@ func main() {
                 DeploymentID: "",
 
                 Event: ne.Node,
+            }
+        }
+    }()
+
+    go func() {
+        for ne := range nodeStateEventChan {
+            eventChan <- &event{
+                Timestamp: ne.Timestamp,
+                WaitIndex: ne.WaitIndex,
+
+                Type: "node_state",
+                AllocationID: "",
+                EvaluationID: "",
+                JobID: "",
+                NodeID: ne.NodeState.NodeID,
+                DeploymentID: "",
+
+                Event: ne.NodeState,
             }
         }
     }()
