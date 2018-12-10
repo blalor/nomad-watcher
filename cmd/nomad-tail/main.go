@@ -286,7 +286,7 @@ func main() {
                             c_node("<node  >"),
                             TMPL_NODE_ID,
                             TMPL_NODE_NAME(nodeNameLen),
-                            "%s %-5t\n",
+                            "status: %s eligibility: %s\n",
                         },
                         " ",
                     ),
@@ -294,7 +294,7 @@ func main() {
                     trimId(n.ID),
                     n.Name,
                     n.Status,
-                    n.Drain,
+                    n.SchedulingEligibility,
                 )
 
 
