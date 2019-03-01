@@ -90,6 +90,7 @@ require (
 	github.com/sirupsen/logrus v1.2.0
 	github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926 // indirect
 	github.com/ugorji/go v0.0.0-20170620104852-5efa3251c7f7 // indirect
+	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
 	golang.org/x/crypto v0.0.0-20181126163421-e657309f52e7 // indirect
 	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a // indirect
 	golang.org/x/oauth2 v0.0.0-20181120190819-8f65e3013eba // indirect
@@ -105,3 +106,10 @@ require (
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
+
+// looks like a couple of issues in 1.12 related to go.mod parsing:
+// * https://github.com/go-resty/resty/issues/230#issuecomment-467911306
+replace github.com/go-resty/resty => gopkg.in/resty.v1 v1.12.0
+
+// * https://github.com/golang/lint/issues/436#issuecomment-468450096
+replace github.com/golang/lint => github.com/golang/lint v0.0.0-20190227174305-8f45f776aaf1
