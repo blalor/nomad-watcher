@@ -20,7 +20,7 @@ jobs:
             - run: make linux darwin
 
             - save_cache:
-                key: *CACHE_KEY
+                key: *GOMOD_CACHE_KEY
                 paths:
                     - /go/pkg
 
