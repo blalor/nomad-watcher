@@ -1,16 +1,21 @@
 ---
 version: 2
+
+references:
+    cache:
+        gomod: &GOMOD_CACHE_KEY v1-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+
 jobs:
     build-and-test:
         docker:
-            - image: circleci/golang:1.11
+            - image: circleci/golang:1.13
 
         steps:
             - checkout
 
             - restore_cache:
                 keys:
-                    - &CACHE_KEY v1-dependencies-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+                    - *GOMOD_CACHE_KEY
 
             - run: make linux darwin
 
